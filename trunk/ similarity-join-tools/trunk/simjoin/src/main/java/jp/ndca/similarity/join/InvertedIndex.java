@@ -2,7 +2,6 @@ package jp.ndca.similarity.join;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,106 +62,83 @@ class PositionLists{
 }
 
 
-class InvertedIndex_Removable{
+class LinkedPositions {
 
-	int dataSize;
+	private Node root;
 
-	// word, Position
-	Map<String, Positions> positionsMap = new HashMap<String, Positions>();
+	private Node last;
 
-	/**
-	 * constractor
-	 * @param size
-	 */
-	public InvertedIndex_Removable(int size){
-		this.dataSize = size;
+	int size;
+
+	public LinkedPositions(){
+		Node node = new Node();
+		root = node;
+		last = node;
 	}
 
-
-	/**
-	 * get str's positions
-	 * @param str
-	 * @return
-	 */
-	public Positions get( String str ){
-		return positionsMap.get(str);
-	}
-
-
-	/**
-	 * put id and position into str's Inverted-Index.
-	 * @param str
-	 * @param id
-	 * @param pointer
-	 */
-	public void put( String str, int id, int pointer ){
-		Positions positions = positionsMap.get(str);
-		if( positions == null ){
-			positions = new Positions(dataSize);
-			positionsMap.put(str, positions);
+	class Node{
+		private int position;
+		private int id;
+		private Node next;
+		private Node pre;
+		public int getPosition() {
+			return position;
 		}
-		positions.put( id, pointer );
-	}
+		public void setPosition(int position) {
+			this.position = position;
+		}
+		public int getId() {
+			return id;
+		}
+		public void setId(int id) {
+			this.id = id;
+		}
+		public Node getNext() {
+			return next;
+		}
+		public void setNext(Node next) {
+			this.next = next;
+		}
+		public Node getPre() {
+			return pre;
+		}
+		public void setPre(Node pre) {
+			this.pre = pre;
+		}
 
-
-	/**
-	 * get number of kinds of word.
-	 * @return
-	 */
-	public int size(){
-		return positionsMap.size();
-	}
-
-	/**
-	 * get word's set
-	 * @return
-	 */
-	public Set<String> keySet(){
-		return positionsMap.keySet();
-	}
-
-}
-
-
-/**
- * this class is for "InvertedIndexRemovable" and this is Thread unsafe class.
- *
- * @author hattori_tsukasa
- *
- */
-class Positions {
-
-	int[] positions;
-
-	Set<Integer> stockIDs = new HashSet<Integer>();
-
-	public Positions( int size ){
-		positions = new int[size];
+		public void remove(){
+			if( pre != null )
+				pre.next = next;
+			if( next != null )
+				next.pre = pre;
+			else // if( next == null ) → this node is last node.
+				last = pre;
+			size--;
+		}
 	}
 
 	public void put( int id, int pointer ){
-		positions[id] = pointer;
-		stockIDs.add(id);
+		Node node = new Node();
+		node.setId(id);
+		node.setPosition(pointer);
+		node.setPre(last);
+		last.next = node;
+		last = node;
+		size++;
 	}
 
-	public void remove( int id ){
-		positions[id] = 0;
-		stockIDs.remove(id);
-	}
-
-	public int get(int id){
-		return positions[id];
+	public Node getRootNode(){
+		return root;
 	}
 
 }
-
 
 class InvertedIndexRemovable{
 
 	int dataSize;
 
 	// word, Position
-	Map<String, Positions> positionsMap = new HashMap<String, Positions>();
+	Map<String, LinkedPositions> positionsMap = new HashMap<String, LinkedPositions>();
 
 	/**
 	 * constractor
@@ -178,7 +154,7 @@ class InvertedIndexRemovable{
 	 * @param str
 	 * @return
 	 */
-	public Positions get( String str ){
+	public LinkedPositions get( String str ){
 		return positionsMap.get(str);
 	}
 
@@ -190,9 +166,9 @@ class InvertedIndexRemovable{
 	 * @param pointer
 	 */
 	public void put( String str, int id, int pointer ){
-		Positions positions = positionsMap.get(str);
+		LinkedPositions positions = positionsMap.get(str);
 		if( positions == null ){
-			positions = new Positions(dataSize);
+			positions = new LinkedPositions();
 			positionsMap.put(str, positions);
 		}
 		positions.put( id, pointer );

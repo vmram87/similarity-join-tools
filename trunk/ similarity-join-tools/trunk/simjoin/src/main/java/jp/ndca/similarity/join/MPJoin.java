@@ -100,7 +100,7 @@ public class MPJoin implements SimilarityJoin{
 	public List<Entry<Item,Item>> extractPairs( Item[] dataSet, double threshold ) {
 		if(1 <= threshold)
 			throw new IllegalArgumentException("argumenrt \"threshold\" is no less than 1.0");
-		if(useSortAtExtractPairs)
+		if( useSortAtExtractPairs )
 			Arrays.sort( dataSet );
 		return innerExtractPairs( dataSet, threshold );
 	}
@@ -146,58 +146,56 @@ public class MPJoin implements SimilarityJoin{
 			if( xSize ==  0 )
 				continue;
 			int maxPrefixLength = xSize - (int)Math.ceil( xSize * threshold ) + 1; // p : max-prefix-length
-			int midPrefixLength = xSize - (int)Math.ceil( 2.0 / ( 1.0 + threshold ) * threshold  * xSize ) + 1; // mid-prefix-length
-			prefixLengths[xDataSetID] = midPrefixLength;
-
 			for( int xPos = 0 ; xPos < maxPrefixLength ; xPos++ ){
 
 				String w = x.get(xPos);
-				Positions positions = index.get(w);
+				LinkedPositions positions = index.get(w);
 				if( positions != null ){
 
-					Set<Integer> removeIDSet = new HashSet<Integer>();
-					Set<Integer> indexIDs = positions.stockIDs;
-					for(  int yID : indexIDs ) {
+					LinkedPositions.Node node = positions.getRootNode();
+					while( true ) {
 
-						if( M[yID].overlap == Integer.MIN_VALUE )
-							continue;
+						LinkedPositions.Node next = node.getNext();
+						if( next == null )
+							break;
 
-						Item y	  = dataSet[yID];
-						int yPos  = positions.get(yID);
-						int ySize = y.size();
+						int yID	  = next.getId();
+						int yPos  = next.getPosition();
+						int ySize = dataSet[yID].size();
 
 						// Jaccard constraint , Another constraint( xSize < ySize * threshold ) is never satisfied because of increasing order sort for dataset.
 						if( ySize < xSize * threshold ){
-							removeIDSet.add( yID );
+							next.remove();
 							continue;
 						}
 
 						minOrverlap[yID] = (int)Math.ceil(  coff * ( ySize + xSize ) );
 						int minPrefixLength = ySize - minOrverlap[yID] + 1;
-						prefixLengths[yID]  = minPrefixLength;
-						if( minPrefixLength < yPos+1 ){
-							removeIDSet.add( yID );
+						prefixLengths[yID] = minPrefixLength;
+						if( prefixLengths[yID] < yPos + 1 ){
+							next.remove();
 							continue;
 						}
 
-						int ubound = Math.min( xSize - xPos, ySize - yPos );
-						if( minOrverlap[yID] <= M[yID].overlap + ubound ){
-							M[yID].overlap++;
-							M[yID].i = xPos;
-							M[yID].j = yPos;
-						}
-						else
+						M[yID].overlap++;;
+						M[yID].i = xPos;
+						M[yID].j = yPos;
+						int remx = xSize - xPos - 1;
+						int remy = ySize - yPos - 1;
+						int ubound = Math.min( remx, remy );
+						if( M[yID].overlap + ubound < minOrverlap[yID] )
 							M[yID].overlap = Integer.MIN_VALUE;
 
+						node = next;
+
 					}
-					// reducuce Inverted Index candidate
-					for( Integer id : removeIDSet )
-						positions.remove(id);
 
 				}
 
 			}
 			veryfy( xDataSetID, dataSet, maxPrefixLength, M, prefixLengths, minOrverlap, S );
+			int midPrefixLength = xSize - (int)Math.ceil( 2.0 / ( 1.0 + threshold ) * threshold  * xSize ) + 1; // mid-prefix-length
+			prefixLengths[xDataSetID] = midPrefixLength;
 			for( int xPos = 0 ; xPos < midPrefixLength ; xPos++ ){
 				String w = x.get(xPos);
 				index.put( w, xDataSetID, xPos );
@@ -207,7 +205,6 @@ public class MPJoin implements SimilarityJoin{
 		return S;
 
 	}
-
 
 	/**
 	 * veryfy whether similarity of candidate data-pairs is over a threshold or not.</br>
@@ -243,7 +240,6 @@ public class MPJoin implements SimilarityJoin{
 				yOffset = prefixLengths[yDataSetID];
 			}
 			int overlapValue = overLap( x.getTokens(), xOffset, y.getTokens(), yOffset, M[yDataSetID].overlap, minOverlap[yDataSetID] );
-
 			if( minOverlap[yDataSetID] <= overlapValue )
 				S.add( new SimpleEntry<Item,Item>(x,y) );
 
