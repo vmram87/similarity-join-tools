@@ -1,9 +1,7 @@
 package jp.ndca.similarity.join;
 
 import java.util.List;
-import java.util.Set;
 import java.util.Map.Entry;
-
 
 public interface SimilarityJoin {
 
@@ -14,6 +12,6 @@ public interface SimilarityJoin {
 
 	public List<Entry<Item,Item>> extractPairs( Item[] dataSet, double threshold );
 
-	public List<Set<Item>> extractBulks( Item[] dataSet, double threshold );
+	public List<List<Item>> extractBulks( Item[] dataSet, double threshold );
 
 }
