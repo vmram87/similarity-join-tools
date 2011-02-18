@@ -135,18 +135,8 @@ class LinkedPositions {
 
 class InvertedIndexRemovable{
 
-	int dataSize;
-
 	// word, Position
 	Map<String, LinkedPositions> positionsMap = new HashMap<String, LinkedPositions>();
-
-	/**
-	 * constractor
-	 * @param size
-	 */
-	public InvertedIndexRemovable(int size){
-		this.dataSize = size;
-	}
 
 
 	/**

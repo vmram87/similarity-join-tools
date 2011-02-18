@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.AbstractMap.SimpleEntry;
 
+import jp.ndca.similarity.distance.Jaccard;
 import jp.ndca.similarity.distance.Overlap;
 import jp.ndca.similarity.join.Item;
 import jp.ndca.similarity.join.SimilarityJoin;
@@ -630,7 +631,7 @@ public class PPJoin implements SimilarityJoin{
 
 
 	@Override
-	public List<Set<Item>> extractBulks( Item[] dataSet, double threshold ) {
+	public List<List<Item>> extractBulks( Item[] dataSet, double threshold ) {
 		if(1 <= threshold)
 			throw new IllegalArgumentException("argumenrt \"threshold\" is no less than 1.0");
 		if( useSortAtExtractBulks )
@@ -639,165 +640,344 @@ public class PPJoin implements SimilarityJoin{
 	}
 
 
-	private List<Set<Item>> innerExtractBulks( Item[] dataSet, double threshold ){
+//	private List<List<Item>> innerExtractBulks( Item[] dataSet, double threshold ){
+//
+//		Set<Integer> buffer = new HashSet<Integer>();
+//		List<List<Item>> result = new ArrayList<List<Item>>();
+//
+//		for( int i = 0 ; i < dataSet.length ; i++ ){
+//
+//			Item x = dataSet[i];
+//
+//			if( buffer.contains( x.getId() ) )
+//				continue;
+//			int xSize = x.size();
+//			if( xSize == 0 ){
+//				buffer.add( x.getId() );
+//				continue;
+//			}
+//
+//			int dataSetSize = dataSet.length;
+//			int[] prefixLengths = new int[dataSetSize];
+//			int[] alpha = new int[dataSetSize];
+//			int xPrefixLength = xSize - (int)Math.ceil( xSize * threshold ) + 1; // p : max-prefix-length
+//			Set<String> xPrefixSet = new HashSet<String>();
+//			for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
+//				String w = x.get( xPos );
+//				xPrefixSet.add(w);
+//			}
+//			InvertedIndexReadOnly index = new InvertedIndexReadOnly();
+//			if(duplicatableAtExtractBulks)
+//				for( int dataSetID = i+1 ; dataSetID < dataSetSize ; dataSetID++ ){
+//
+//					Item y = dataSet[dataSetID];
+//
+//					// check calculatability.
+//					int ySize = y.size();
+//					if( ySize == 0 ){
+//						buffer.add( y.getId() );
+//						continue;
+//					}
+//					if( xSize < ySize * threshold )// Jaccard constraint
+//						break;
+//
+//					int yPrefixLength = ySize - (int)Math.ceil(  threshold / ( 1 + threshold ) * ( xSize + ySize ) ) + 1;
+//					prefixLengths[dataSetID] = yPrefixLength;
+//					for( int yPos = 0 ; yPos < yPrefixLength ; yPos++ ){
+//						String w = y.get(yPos);
+//						if( xPrefixSet.contains(w) )
+//							index.put(w, dataSetID, yPos);
+//					}
+//				}
+//			else
+//				for( int dataSetID = i+1 ; dataSetID < dataSetSize ; dataSetID++ ){
+//
+//					Item y = dataSet[dataSetID];
+//
+//					// check calculatability.
+//					if( buffer.contains( y.getId() ) )
+//						continue;
+//					int ySize = y.size();
+//					if( ySize == 0 ){
+//						buffer.add( y.getId() );
+//						continue;
+//					}
+//					if( xSize < ySize * threshold )// Jaccard constraint
+//						break;
+//
+//					int yPrefixLength = ySize - (int)Math.ceil(  threshold / ( 1 + threshold ) * ( xSize + ySize ) ) + 1;
+//					prefixLengths[dataSetID] = yPrefixLength;
+//					for( int yPos = 0 ; yPos < yPrefixLength ; yPos++ ){
+//						String w = y.get(yPos);
+//						if( xPrefixSet.contains(w) )
+//							index.put(w, dataSetID, yPos);
+//					}
+//				}
+//
+//			int[] A	= new int[dataSetSize];
+//			if( usePlus )
+//				for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
+//
+//					String w = x.get(xPos);
+//					PositionLists positions = index.get(w);
+//					if( positions != null && positions.size() != 0 ){
+//
+//						List<Integer> idList = positions.idList;
+//						List<Integer> positionList = positions.pointerList;
+//						for( int s = 0 ; s < positions.size() ; s++ ) {
+//
+//							int yID   = idList.get(s);
+//							if(A[yID] == Integer.MIN_VALUE)
+//								continue;
+//
+//							Item y	  = dataSet[yID];
+//							int yPos  = positionList.get(s);
+//							int ySize = y.size();
+//							// this point Jaccard Constraint is already satissfied !
+//							alpha[yID]	= (int)Math.ceil(  threshold / ( 1 + threshold )  * ( ySize + xSize ) );
+//							int unbound = Math.min( xSize - xPos, ySize - yPos );
+//							if( alpha[yID] <= A[yID] + unbound ){
+//								// first !
+//								if( A[yID] == 0 ){
+//									int hmax = xSize + ySize - 2 * (int)Math.ceil( threshold / ( 1 + threshold ) * ( ySize + xSize ) ) - ( xPos + yPos ); // ubound don't needs '+2' because of xPos is pointer from id=0 ;
+//									int h = suffixFilter( x.getTokens(), xPos+1, xSize-xPos-1, y.getTokens(), yPos+1, ySize-yPos-1, hmax, 0 );
+//									if( h <= hmax )
+//										A[yID]++;
+//									else
+//										A[yID] = Integer.MIN_VALUE;
+//								}
+//								else
+//									A[yID]++;
+//							}
+//							else
+//								A[yID] = Integer.MIN_VALUE;
+//						}
+//					}
+//				}
+//			else{
+//
+//				for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
+//
+//					String w = x.get(xPos);
+//					PositionLists positions = index.get(w);
+//					if( positions != null && positions.size() != 0 ){
+//
+//						List<Integer> idList = positions.idList;
+//						List<Integer> positionList = positions.pointerList;
+//						for( int s = 0 ; s < positions.size() ; s++ ) {
+//
+//							int yID   = idList.get(s);
+//							if(A[yID] == Integer.MIN_VALUE)
+//								continue;
+//
+//							Item y	  = dataSet[yID];
+//							int yPos  = positionList.get(s);
+//							int ySize = y.size();
+//							// this point Jaccard Constraint is already satissfied !
+//							alpha[yID]	= (int)Math.ceil(  threshold / ( 1 + threshold )  * ( ySize + xSize ) );
+//							int unbound = Math.min( xSize - xPos, ySize - yPos );
+//							if( alpha[yID] <= A[yID] + unbound )
+//								A[yID]++;
+//							else
+//								A[yID] = Integer.MIN_VALUE;
+//
+//						}
+//					}
+//				}
+//
+//			}
+//			List<Item> S = new ArrayList<Item>();
+//			veryfy( x, xPrefixLength, dataSet, A, prefixLengths, alpha, S, buffer );
+//			if( 0 < S.size() ){
+//				buffer.add( x.getId() );
+//				S.add(x);
+//				result.add(S);
+//			}
+//		}
+//
+//		Collections.sort( result, new Comparator<List<Item>>(){
+//
+//			@Override
+//			public int compare(List<Item> o1, List<Item> o2) {
+//				int size1 = o1.size();
+//				int size2 = o2.size();
+//				if( size1 < size2 )
+//					return  1;
+//				else if( size2 < size1 )
+//					return -1;
+//				return 0;
+//			}
+//
+//		} );
+//		return result;
+//
+//	}
+
+
+
+	private List<List<Item>> innerExtractBulks( Item[] dataSet, double threshold ){
+
+		double coff = threshold / ( 1 + threshold );
 
 		Set<Integer> buffer = new HashSet<Integer>();
-		List<Set<Item>> result = new ArrayList<Set<Item>>();
+		List<List<Item>> result = new ArrayList<List<Item>>();
 
-		for( int i = 0 ; i < dataSet.length ; i++ ){
+		InvertedIndexRemovable index = new InvertedIndexRemovable();
+		int dataSetSize = dataSet.length;
+		int[] prefixLengths = new int[dataSetSize];
+		int[] alpha = new int[dataSetSize];
+		for( int xDataSetID = 0 ; xDataSetID < dataSetSize ; xDataSetID++ ){
 
-			Item x = dataSet[i];
-
-			if( buffer.contains( x.getId() ) )
+			if( buffer.contains(xDataSetID) )
 				continue;
+
+			Item x = dataSet[xDataSetID];
+			int[] A	= new int[xDataSetID];
 			int xSize = x.size();
-			if( xSize == 0 ){
-				buffer.add( x.getId() );
+			if( xSize ==  0 ){
+				buffer.add(xDataSetID);
 				continue;
 			}
+			int maxPrefixLength = xSize - (int)Math.ceil( xSize * threshold ) + 1; // p : max-prefix-length
 
-			Set<Item> S = new HashSet<Item>();
-			int dataSetSize = dataSet.length;
-			int[] prefixLengths = new int[dataSetSize];
-			int[] alpha = new int[dataSetSize];
-			int xPrefixLength = xSize - (int)Math.ceil( xSize * threshold ) + 1; // p : max-prefix-length
-			Set<String> xPrefixSet = new HashSet<String>();
-			for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
-				String w = x.get( xPos );
-				xPrefixSet.add(w);
-			}
-			InvertedIndexReadOnly index = new InvertedIndexReadOnly();
-			if(duplicatableAtExtractBulks)
-				for( int dataSetID = i+1 ; dataSetID < dataSetSize ; dataSetID++ ){
-
-					Item y = dataSet[dataSetID];
-
-					// check calculatability.
-					int ySize = y.size();
-					if( ySize == 0 ){
-						buffer.add( y.getId() );
-						continue;
-					}
-					if( xSize < ySize * threshold )// Jaccard constraint
-						break;
-
-					int yPrefixLength = ySize - (int)Math.ceil(  threshold / ( 1 + threshold ) * ( xSize + ySize ) ) + 1;
-					prefixLengths[dataSetID] = yPrefixLength;
-					for( int yPos = 0 ; yPos < yPrefixLength ; yPos++ ){
-						String w = y.get(yPos);
-						if( xPrefixSet.contains(w) )
-							index.put(w, dataSetID, yPos);
-					}
-				}
-			else
-				for( int dataSetID = i+1 ; dataSetID < dataSetSize ; dataSetID++ ){
-
-					Item y = dataSet[dataSetID];
-
-					// check calculatability.
-					if( buffer.contains( y.getId() ) )
-						continue;
-					int ySize = y.size();
-					if( ySize == 0 ){
-						buffer.add( y.getId() );
-						continue;
-					}
-					if( xSize < ySize * threshold )// Jaccard constraint
-						break;
-
-					int yPrefixLength = ySize - (int)Math.ceil(  threshold / ( 1 + threshold ) * ( xSize + ySize ) ) + 1;
-					prefixLengths[dataSetID] = yPrefixLength;
-					for( int yPos = 0 ; yPos < yPrefixLength ; yPos++ ){
-						String w = y.get(yPos);
-						if( xPrefixSet.contains(w) )
-							index.put(w, dataSetID, yPos);
-					}
-				}
-
-			int[] A	= new int[dataSetSize];
 			if( usePlus )
-				for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
+
+				for( int xPos = 0 ; xPos < maxPrefixLength ; xPos++ ){
 
 					String w = x.get(xPos);
-					PositionLists positions = index.get(w);
-					if( positions != null && positions.size() != 0 ){
+					LinkedPositions positions = index.get(w);
+					if( positions != null ){
 
-						List<Integer> idList = positions.idList;
-						List<Integer> positionList = positions.pointerList;
-						for( int s = 0 ; s < positions.size() ; s++ ) {
+						LinkedPositions.Node node = positions.getRootNode();
+						while( true ) {
 
-							int yID   = idList.get(s);
-							if(A[yID] == Integer.MIN_VALUE)
+							LinkedPositions.Node next = node.getNext();
+							if( next == null )
+								break;
+
+							int yID	  =	next.getId();
+							if( buffer.contains(yID) ){
+								node = next;
 								continue;
+							}
 
-							Item y	  = dataSet[yID];
-							int yPos  = positionList.get(s);
-							int ySize = y.size();
-							// this point Jaccard Constraint is already satissfied !
-							alpha[yID]	= (int)Math.ceil(  threshold / ( 1 + threshold )  * ( ySize + xSize ) );
-							int unbound = Math.min( xSize - xPos, ySize - yPos );
-							if( alpha[yID] <= A[yID] + unbound ){
-								// first !
-								if( A[yID] == 0 ){
-									int hmax = xSize + ySize - 2 * (int)Math.ceil( threshold / ( 1 + threshold ) * ( ySize + xSize ) ) - ( xPos + yPos ); // ubound don't needs '+2' because of xPos is pointer from id=0 ;
+							if( A[yID] == Integer.MIN_VALUE ){
+								node = next;
+								continue;
+							}
+
+							Item y = dataSet[yID];
+							int yPos  =	next.getPosition();
+							int ySize =	y.size();
+
+							// Jaccard constraint : another condition:"xSize < ySize * threshold" is not satisfied due to increasing ordering for dataSet.
+							if( ySize < xSize * threshold ){
+								next.remove();
+								continue;
+							}
+
+							alpha[yID] = (int)Math.ceil( coff * ( ySize + xSize ) );
+							A[yID]++;
+
+							// arugumnet taht global oerdered x and y has same sequence after *Pos
+							// ubound don't needs '+1' because of xPos is pointer from id=0 ;
+							int ubound = Math.min( xSize - xPos - 1, ySize - yPos -1 );
+							if( A[yID] + ubound < alpha[yID] )
+								A[yID] = Integer.MIN_VALUE;
+							else{
+								// execute in only first phase!
+								if( A[yID] == 1 ){
+									// Hamming Distance Constraint : Hamming distance between part of x and y  after *Pos must exceed hmax.
+									// h' <= hmax + ( xPos + 1 + yPos +1 ) - 2 = |x| + |y| - 2α = |x| + |y| - 2t / ( 1 + t )
+									int hmax = xSize + ySize - 2 * (int)Math.ceil( coff * ( ySize + xSize ) ) - ( xPos + yPos ); // ubound don't needs '+2' because of xPos is pointer from id=0 ;
 									int h = suffixFilter( x.getTokens(), xPos+1, xSize-xPos-1, y.getTokens(), yPos+1, ySize-yPos-1, hmax, 0 );
-									if( h <= hmax )
-										A[yID]++;
-									else
+									if( hmax < h )
 										A[yID] = Integer.MIN_VALUE;
 								}
-								else
-									A[yID]++;
 							}
-							else
-								A[yID] = Integer.MIN_VALUE;
+							node = next;
+
 						}
+
 					}
 				}
+
 			else{
 
-				for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
+				for( int xPos = 0 ; xPos < maxPrefixLength ; xPos++ ){
 
 					String w = x.get(xPos);
-					PositionLists positions = index.get(w);
-					if( positions != null && positions.size() != 0 ){
+					LinkedPositions positions = index.get(w);
+					if( positions != null ){
 
-						List<Integer> idList = positions.idList;
-						List<Integer> positionList = positions.pointerList;
-						for( int s = 0 ; s < positions.size() ; s++ ) {
+						LinkedPositions.Node node = positions.getRootNode();
+						while( true ) { // positionSet don't have components with the same position.id
 
-							int yID   = idList.get(s);
-							if(A[yID] == Integer.MIN_VALUE)
+							LinkedPositions.Node next = node.getNext();
+							if( next == null )
+								break;
+
+							int yID   = next.getId();
+							if( buffer.contains(yID) ){
+								next.remove();
 								continue;
+							}
+
+							if( A[yID] == Integer.MIN_VALUE ){
+								node = next;
+								continue;
+							}
 
 							Item y	  = dataSet[yID];
-							int yPos  = positionList.get(s);
+							int yPos  = next.getPosition();
 							int ySize = y.size();
-							// this point Jaccard Constraint is already satissfied !
-							alpha[yID]	= (int)Math.ceil(  threshold / ( 1 + threshold )  * ( ySize + xSize ) );
-							int unbound = Math.min( xSize - xPos, ySize - yPos );
-							if( alpha[yID] <= A[yID] + unbound )
-								A[yID]++;
-							else
+
+							// Jaccard constraint , and another constraint( xSize < ySize * threshold ) is already satisfied.
+							if( ySize < xSize * threshold ){
+								node = next;
+								continue;
+							}
+
+							alpha[yID]	= (int)Math.ceil( coff * ( ySize + xSize ) );
+							A[yID]++;
+							int ubound = Math.min( xSize - xPos -1 , ySize - yPos -1 );
+							if( A[yID] + ubound < alpha[yID] )
 								A[yID] = Integer.MIN_VALUE;
 
+							node = next;
 						}
 					}
 				}
 
 			}
-			veryfy( x, xPrefixLength, dataSet, A, prefixLengths, alpha, S, buffer );
+			List<Item> S = new ArrayList<Item>();
+			veryfy( xDataSetID, dataSet, maxPrefixLength, A, prefixLengths, alpha, S, buffer );
 			if( 0 < S.size() ){
-				buffer.add( x.getId() );
+				buffer.add( xDataSetID );
 				S.add(x);
-				result.add(S);
+				boolean isUnioned = union( S, result, threshold, buffer );
+				if( !isUnioned )
+					result.add(S);
 			}
+			else{
+				S.add(x);
+				boolean isUnioned = union( S, result, threshold, buffer );
+				if(!isUnioned){
+					int midPrefixLength = xSize - (int)Math.ceil( 2.0 * coff * xSize ) + 1; // mid-prefix-length
+					prefixLengths[xDataSetID] = midPrefixLength;
+					for( int xPos = 0 ; xPos < midPrefixLength ; xPos++ ){
+						String w = x.get(xPos);
+						index.put( w, xDataSetID, xPos );
+					}
+				}
+			}
+
 		}
 
-		Collections.sort( result, new Comparator<Set<Item>>(){
+		Collections.sort( result, new Comparator<List<Item>>(){
 
 			@Override
-			public int compare(Set<Item> o1, Set<Item> o2) {
+			public int compare(List<Item> o1, List<Item> o2) {
 				int size1 = o1.size();
 				int size2 = o2.size();
 				if( size1 < size2 )
@@ -812,6 +992,63 @@ public class PPJoin implements SimilarityJoin{
 
 	}
 
+	private final static Jaccard jaccard = new Jaccard();
+
+	public boolean union( List<Item> S, List<List<Item>> result, double threshold, Set<Integer> buffer ){
+
+		boolean isUnioned = false;
+		String[] query = S.get(0).getTokens();
+		int querySize = query.length;
+
+		for( List<Item> set : result ){
+			String[] candidate = set.get(0).getTokens();
+			int candidateSize = candidate.length;
+
+			// Jaccard Constraint
+			if( querySize < threshold * candidateSize || candidateSize < threshold * querySize )
+				continue;
+
+			double score = jaccard.calcByMerge(query, candidate);
+			if( threshold <= score ){
+				set.addAll(S);
+				isUnioned = true;
+				break;
+			}
+		}
+		return isUnioned;
+
+	}
+
+	private void veryfy( int xDataSetID, Item[] dataSet, int maxXPrefixLength, int[] A, int[] prefixLengths, int[] alpha, List<Item> S, Set<Integer> buffer ){
+
+		Item x = dataSet[xDataSetID];
+		String wx_lastPrefix = x.get( maxXPrefixLength-1 );
+		for( int yDataSetID = 0 ; yDataSetID < xDataSetID ; yDataSetID++ ){
+
+			if( A[yDataSetID] <= 0 )
+				continue;
+
+			int overlapValue = A[yDataSetID];
+			Item y = dataSet[yDataSetID];
+			String wy_lastPrefix = y.get( prefixLengths[yDataSetID]-1 );
+			if( wx_lastPrefix.compareTo( wy_lastPrefix ) < 0 ){ // wx < wy
+				int unbound = A[yDataSetID] + x.size() - maxXPrefixLength;
+				if( alpha[yDataSetID] <= unbound )
+					overlapValue += overlap.calcByMerge( x.getTokens(), maxXPrefixLength, y.getTokens(), A[yDataSetID] );
+			}
+			else{
+				int unbound = A[yDataSetID] + y.size() - prefixLengths[yDataSetID];
+				if( alpha[yDataSetID] <= unbound )
+					overlapValue += overlap.calcByMerge( x.getTokens(), A[yDataSetID], y.getTokens(), prefixLengths[yDataSetID] );
+			}
+
+			if( alpha[yDataSetID] <= overlapValue ){
+				S.add(y);
+				buffer.add( yDataSetID );
+			}
+		}
+
+	}
 
 	class Partition{
 		int slPos;
