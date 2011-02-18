@@ -36,8 +36,6 @@ public class PPJoin extends AbstractSimilarityJoin{
 
 	private boolean useSortAtExtractBulks = true;
 
-	private boolean duplicatableAtExtractBulks = true;
-
 	private int maxDepth = DEFAULT_MAX_DEPTH;
 
 	private  static final Overlap overlap = new Overlap();
@@ -50,7 +48,6 @@ public class PPJoin extends AbstractSimilarityJoin{
 	public boolean isUseSortAtSearch()				{		return useSortAtSearch;					}
 	public boolean isUseSortAtExtractPairs()		{		return useSortAtExtractPairs;			}
 	public boolean isUseSortAtExtractBulks()		{		return useSortAtExtractBulks;			}
-	public boolean isDuplicatableAtExtractBulks()	{		return duplicatableAtExtractBulks;		}
 
 
 	public void setTokenizer( NgramTokenizer tokenizer )
@@ -67,8 +64,6 @@ public class PPJoin extends AbstractSimilarityJoin{
 		{		this.useSortAtExtractPairs = useSortAtExtractPairs;					}
 	public void setUseSortAtExtractBulks(boolean useSortAtExtractBulks)
 		{		this.useSortAtExtractBulks = useSortAtExtractBulks;					}
-	public void setDuplicatableAtExtractBulks(boolean duplicatableAtExtractBulks)
-		{		this.duplicatableAtExtractBulks = duplicatableAtExtractBulks;		}
 
 
 	/**
