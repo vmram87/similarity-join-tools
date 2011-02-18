@@ -11,9 +11,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.AbstractMap.SimpleEntry;
 
-import jp.ndca.similarity.distance.Jaccard;
 import jp.ndca.similarity.join.Item;
-import jp.ndca.similarity.join.SimilarityJoin;
 
 /**
  * This implementation is based on  a letter : "Efficient Set Similarity Joins Using Min-Prefixes (2009)"</br>
@@ -21,7 +19,7 @@ import jp.ndca.similarity.join.SimilarityJoin;
  * @author hattori_tsukasa
  *
  */
-public class MPJoin implements SimilarityJoin{
+public class MPJoin extends AbstractSimilarityJoin{
 
 
 	private NgramTokenizer tokenizer = new NgramTokenizer(2);
@@ -34,15 +32,12 @@ public class MPJoin implements SimilarityJoin{
 
 	private boolean useSortAtExtractBulks = true;
 
-	private boolean duplicatableAtExtractBulks = true;
-
 
 	public NgramTokenizer getTokenizer()			{		return tokenizer;						}
 	public boolean isUseConvertingTypeData()		{		return useConvertingTypeData;			}
 	public boolean isUseSortAtSearch()				{		return useSortAtSearch;					}
 	public boolean isUseSortAtExtractPairs()		{		return useSortAtExtractPairs;			}
 	public boolean isUseSortAtExtractBulks()		{		return useSortAtExtractBulks;			}
-	public boolean isDuplicatableAtExtractBulks()	{		return duplicatableAtExtractBulks;		}
 
 
 	public void setTokenizer( NgramTokenizer tokenizer )
@@ -55,8 +50,6 @@ public class MPJoin implements SimilarityJoin{
 		{		this.useSortAtExtractPairs = useSortAtExtractPairs;			}
 	public void setUseSortAtExtractBulks(boolean useSortAtExtractBulks)
 		{		this.useSortAtExtractBulks = useSortAtExtractBulks;			}
-	public void setDuplicatableAtExtractBulks(boolean duplicatableAtExtractBulks)
-		{		this.duplicatableAtExtractBulks = duplicatableAtExtractBulks;		}
 
 
 	/**
@@ -126,7 +119,7 @@ public class MPJoin implements SimilarityJoin{
 
 		List<Entry<Item,Item>> S = new ArrayList<Entry<Item,Item>>();
 		int dataSetSize = dataSet.length;
-		InvertedIndexRemovable index = new InvertedIndexRemovable();
+		LinkedInvertedIndex index = new LinkedInvertedIndex();
 		int[] prefixLengths = new int[dataSetSize];
 		int[] minOrverlap	= new int[dataSetSize];
 		PrefixOverlap[] M = new PrefixOverlap[dataSetSize];
@@ -327,7 +320,8 @@ public class MPJoin implements SimilarityJoin{
 		}
 
 		double coeff = threshold / (1+threshold);
-		InvertedIndexReadOnly index = new InvertedIndexReadOnly();
+		//InvertedIndexReadOnly index = new InvertedIndexReadOnly();
+		LinkedInvertedIndex index = new LinkedInvertedIndex();
 		for( int yID = 0 ; yID < dataSetSize ; yID++ ){
 			Item y = dataSet[yID];
 			int ySize = y.size();
@@ -353,29 +347,34 @@ public class MPJoin implements SimilarityJoin{
 
 		for( int xPos = 0 ; xPos < xPrefixLength ; xPos++ ){
 			String w = x.get(xPos);
-			PositionLists positions = index.get(w);
+			LinkedPositions positions = index.get(w);
 			if( positions != null ){
-				List<Integer> idList = positions.idList;
-				List<Integer> pointerList = positions.pointerList;
-				for( int i = 0 ; i < idList.size() ; i++ ){
-					int yID = idList.get(i);
-					if( M[yID].overlap == Integer.MIN_VALUE )
+				LinkedPositions.Node node = positions.getRootNode();
+				while( true ){
+					LinkedPositions.Node next = node.getNext();
+					if( next == null )
+						break;
+					int yID = next.getId();
+					if( M[yID].overlap == Integer.MIN_VALUE ){
+						next.remove();
 						continue;
+					}
 					Item y	  = dataSet[yID];
 					int ySize = y.size();
-					int yPos  = pointerList.get(i);
+					int yPos  = node.getPosition();
 
 					// this point Jaccard Constraint is already satissfied !
-					int unbound = Math.min( xSize - xPos - 1, ySize - yPos - 1 );
+					int unbound = Math.min( xSize - xPos , ySize - yPos ) - 1;
 					M[yID].overlap++;
 					M[yID].i = xPos;
 					M[yID].j = yPos;
 					if( M[yID].overlap + unbound < minOverlap[yID] )
 						M[yID].overlap = Integer.MIN_VALUE;
+					node = next;
 				}
 			}
 		}
-		veryfy( x, xPrefixLength, dataSet, M, prefixLengths, minOverlap, S, null );
+		veryfy( x, xPrefixLength, dataSet, M, prefixLengths, minOverlap, S );
 		return S;
 
 	}
@@ -392,7 +391,7 @@ public class MPJoin implements SimilarityJoin{
 	 * @param alpha
 	 * @param S
 	 */
-	private void veryfy( Item x, int xMaxPrefixLength, Item[] dataSet, PrefixOverlap[] M, int[] prefixLengths, int[] minOverlap, Collection<Item> S, Set<Integer> buffer ){
+	private void veryfy( Item x, int xMaxPrefixLength, Item[] dataSet, PrefixOverlap[] M, int[] prefixLengths, int[] minOverlap, Collection<Item> S ){
 		String wx_lastPrefix = x.get( xMaxPrefixLength - 1 );
 		for( int yID = 0 ; yID < dataSet.length ; yID++ ){
 
@@ -413,11 +412,8 @@ public class MPJoin implements SimilarityJoin{
 			}
 			int overlapValue = overLap( x.getTokens(), xOffset, y.getTokens(), yOffset, M[yID].overlap, minOverlap[yID] );
 
-			if( minOverlap[yID] <= overlapValue ){
+			if( minOverlap[yID] <= overlapValue )
 				S.add( y );
-				if( buffer != null )
-					buffer.add( y.getId() );
-			}
 
 		}
 	}
@@ -449,7 +445,7 @@ public class MPJoin implements SimilarityJoin{
 		List<List<Item>> result = new ArrayList<List<Item>>();
 
 		int dataSetSize = dataSet.length;
-		InvertedIndexRemovable index = new InvertedIndexRemovable();
+		LinkedInvertedIndex index = new LinkedInvertedIndex();
 		int[] prefixLengths = new int[dataSetSize];
 		int[] minOrverlap	= new int[dataSetSize];
 		PrefixOverlap[] M = new PrefixOverlap[dataSetSize];
@@ -566,32 +562,6 @@ public class MPJoin implements SimilarityJoin{
 
 	}
 
-	private final static Jaccard jaccard = new Jaccard();
-
-	public boolean union( List<Item> S, List<List<Item>> result, double threshold, Set<Integer> buffer ){
-
-		boolean isUnioned = false;
-		String[] query = S.get(0).getTokens();
-		int querySize = query.length;
-
-		for( List<Item> set : result ){
-			String[] candidate = set.get(0).getTokens();
-			int candidateSize = candidate.length;
-
-			// Jaccard Constraint
-			if( querySize < threshold * candidateSize || candidateSize < threshold * querySize )
-				continue;
-
-			double score = jaccard.calcByMerge(query, candidate);
-			if( threshold <= score ){
-				set.addAll(S);
-				isUnioned = true;
-				break;
-			}
-		}
-		return isUnioned;
-
-	}
 
 	/**
 	 * veryfy whether similarity of candidate data-pairs is over a threshold or not.</br>
