@@ -856,33 +856,6 @@ public class PPJoin extends AbstractSimilarityJoin{
 
 	}
 
-//	private final static Jaccard jaccard = new Jaccard();
-//
-//	public boolean union( List<Item> S, List<List<Item>> result, double threshold, Set<Integer> buffer ){
-//
-//		boolean isUnioned = false;
-//		String[] query = S.get(0).getTokens();
-//		int querySize = query.length;
-//
-//		for( List<Item> set : result ){
-//			String[] candidate = set.get(0).getTokens();
-//			int candidateSize = candidate.length;
-//
-//			// Jaccard Constraint
-//			if( querySize < threshold * candidateSize || candidateSize < threshold * querySize )
-//				continue;
-//
-//			double score = jaccard.calcByMerge(query, candidate);
-//			if( threshold <= score ){
-//				set.addAll(S);
-//				isUnioned = true;
-//				break;
-//			}
-//		}
-//		return isUnioned;
-//
-//	}
-
 	private void veryfy( int xDataSetID, Item[] dataSet, int maxXPrefixLength, int[] A, int[] prefixLengths, int[] alpha, List<Item> S, Set<Integer> buffer ){
 
 		Item x = dataSet[xDataSetID];
