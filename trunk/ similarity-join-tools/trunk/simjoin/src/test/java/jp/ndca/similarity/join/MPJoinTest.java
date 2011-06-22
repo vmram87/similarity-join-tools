@@ -4,15 +4,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 
 import org.junit.Test;
+
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 public class MPJoinTest {
 
@@ -30,7 +30,8 @@ public class MPJoinTest {
 	public void extractPairsTest() throws IOException{
 
 		int id = 0;
-		List<Item> dataSet = new ArrayList<Item>();
+		List<IntItem> intItems = new ArrayList<IntItem>();
+		List<StringItem> stringItems = new ArrayList<StringItem>();
 		List<String> strDataSet	= new ArrayList<String>();
 
 		InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("lsh.txt");
@@ -44,77 +45,48 @@ public class MPJoinTest {
 				continue;
 			}
 			String[] strs = line.split(",");
-			List<String> tokens = new ArrayList<String>();
-			for( String str : strs )
-				tokens.add( str.trim() );
-			if( tokens.size() < 10 )
+			IntList intTokens = new IntArrayList();
+			List<String> strTokens = new ArrayList<String>();
+			for( String str : strs ){
+				strTokens.add( str.trim() );
+				intTokens.add( Integer.parseInt( str.trim() ) );
+			}
+			if( strTokens.size() < 10 )
 				continue;
 
-			String[] arrays = tokens.toArray( new String[tokens.size()] );
-			Arrays.sort(arrays);
-			dataSet.add( new Item(arrays, id++) );
+			String[] strArrays = strTokens.toArray( new String[strTokens.size()] );
+			int[] intArrays = intTokens.toArray( new int[intTokens.size()] );
+			Arrays.sort(strArrays);
+			intItems.add( join.intConvert(intArrays, id) );
+			stringItems.add( new StringItem(strArrays, id) );
 			strDataSet.add(line);
-
+			id++;
 		}
 		br.close();
 
-		Item[] datum = dataSet.toArray( new Item[dataSet.size()] );
-		Arrays.sort(datum);
-
+		IntItem[] intDatum = intItems.toArray( new IntItem[intItems.size()] );
+		StringItem[] strDatum = stringItems.toArray( new StringItem[stringItems.size()] );
+		Arrays.sort(strDatum);
+		Arrays.sort(intDatum);
+		
 		join.setUseSortAtExtractPairs(false);
 
 		long start = System.currentTimeMillis();
-		List<Entry<Item,Item>> result = join.extractPairs( datum, threshold );
+		List<Entry<StringItem,StringItem>> result = join.extractPairs( strDatum, threshold );
 		long end = System.currentTimeMillis();
-
 		long diff = end - start;
-		PrintWriter pw = new PrintWriter("C:\\similarity_pairs_mp.txt");
-
-		Collections.sort(result, new Comparator<Entry<Item,Item>>(){
-
-			@Override
-			public int compare(Entry<Item, Item> o1, Entry<Item, Item> o2) {
-
-				int x1 = o1.getKey().getId();
-				int x2 = o1.getValue().getId();
-				int xMax = Math.max(x1, x2);
-				int xMin = Math.min(x1, x2);
-
-				int y1 = o2.getKey().getId();
-				int y2 = o2.getValue().getId();
-				int yMax = Math.max(y1, y2);
-				int yMin = Math.min(y1, y2);
-				if( xMin < yMin )
-					return -1;
-				if( yMin < xMin )
-					return  1;
-				if( xMax < yMax )
-					return  -1;
-				if( yMax < xMax )
-					return   1;
-				return 0;
-
-			}
-
-
-		});
-
-		for( Entry<Item,Item> entry : result ){
-			int keyID = entry.getKey().getId() ;
-			int valueID = entry.getValue().getId() ;
-			int min = Math.min(keyID, valueID);
-			int max = Math.max(keyID, valueID);
-			pw.println( min + ":" + max );
-		}
-		pw.close();
-
-		pw = new PrintWriter("C:\\lsh_data.txt");
-		for( int i = 0 ; i < strDataSet.size() ; i++)
-			pw.println( i + ":" + strDataSet.get(i) );
-		pw.close();
-
-		System.out.println( "dataSize : " + dataSet.size() );
+		System.out.println( "dataSize : " + stringItems.size() );
 		System.out.println( "result pairs: " + result.size() );
 		System.out.println( "calc time : " + diff );
+		
+		start = System.currentTimeMillis();
+		List<Entry<IntItem,IntItem>> _result = join.extractPairs( intDatum, threshold );
+		end = System.currentTimeMillis();
+		diff = end - start;
+		System.out.println( "dataSize : " + stringItems.size() );
+		System.out.println( "result pairs: " + _result.size() );
+		System.out.println( "calc time : " + diff );
+		
+
 	}
 }

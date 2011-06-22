@@ -94,8 +94,30 @@ public class Overlap {
 
 	}
 
+	public double calcByMerge( int[] a, int offsetA, int[] b, int offsetB){
+
+		int overlap = 0;
+		int i = offsetA;
+		int j = offsetB;
+
+		while( i < a.length && j < b.length){
+			if( a[i] == b[j] ){
+				overlap++;
+				i++;
+				j++;
+			}
+			else if( a[i] < b[j] )
+				i++;
+			else
+				j++;
+		}
+		return overlap;
+
+	}
+	
 	private double innerCalc(int alen, int blen, int union){
 		double intersection = alen +  blen - union;
 		return intersection;
 	}
+	
 }
