@@ -18,7 +18,7 @@ public class MPJoinTest {
 
 	static String encode = "utf-8";
 
-	static double threshold = 0.95;
+	static double threshold = 0.90;
 
 	static MPJoin join;
 
