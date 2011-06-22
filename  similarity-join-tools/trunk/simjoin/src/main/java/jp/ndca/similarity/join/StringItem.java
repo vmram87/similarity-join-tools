@@ -1,24 +1,34 @@
 package jp.ndca.similarity.join;
 
-public class Item implements Comparable<Item>{
+/**
+ * String データの特徴を表すクラスです。
+ * 
+ * @author hattori_tsukasa
+ *
+ */
+public class StringItem implements Comparable<StringItem>{
 
 	private int id;
-
 	private String[] tokens;
 
-	public int getId()			{	return id;			}
+	public int getId()			 {	return id;			}
 	public String[] getTokens() {	return tokens;		}
 
 	public void setId(int id)
-		{		this.id = id;				}
+	{		this.id = id;				}
 	public void setTokens( String[] tokens )
-		{		this.tokens = tokens;		}
+	{		this.tokens = tokens;		}
 
 	/**
 	 * constractor
+	 * 
+	 * argument "tokens" is already sorted.
+	 * Please look at {@link SimilarityJoin#convert(java.util.List)}.
+	 * 
 	 * @param tokens
+	 * @param id
 	 */
-	public Item( String[] tokens, int id ){
+	StringItem( String[] tokens, int id ){
 		this.tokens = tokens;
 		this.id = id;
 	}
@@ -33,7 +43,7 @@ public class Item implements Comparable<Item>{
 	}
 
 	@Override
-	public int compareTo( Item o ) {
+	public int compareTo( StringItem o ) {
 		int num1 = this.size();
 		int num2 = o.size();
 		if( num1 < num2 )

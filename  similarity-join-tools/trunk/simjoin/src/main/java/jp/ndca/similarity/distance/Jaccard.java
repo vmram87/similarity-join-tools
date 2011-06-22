@@ -52,6 +52,12 @@ public class Jaccard {
 	public <K extends Comparable<K>> double calcByMerge( K[] a, K[] b ){
 		return calcByMerge( a, 0, b, 0 );
 	}
+	public double calcByMerge( char[] a, char[] b ){
+		return calcByMerge( a, 0, b, 0 );
+	}
+	public double calcByMerge( int[] a, int[] b ){
+		return calcByMerge( a, 0, b, 0 );
+	}
 
 
 	public <K extends Comparable<K>> double calcByMerge( K[] a, int offsetA, K[] b, int offsetB ){
@@ -77,7 +83,51 @@ public class Jaccard {
 
 	}
 
+	public double calcByMerge( char[] a, int offsetA, char[] b, int offsetB ){
 
+		int aLen = a.length - offsetA;
+		int bLen = b.length - offsetB;
+
+		int overlap = 0;
+		int i = offsetA;
+		int j = offsetB;
+		while( i < a.length && j < b.length ){
+			if( a[i] == b[j] ){
+				overlap++;
+				i++;
+				j++;
+			}
+			else if( a[i] < b[j] ) // a < b
+				i++;
+			else
+				j++;
+		}
+		return overlap / (double)( aLen + bLen - overlap );
+
+	}
+
+	public double calcByMerge( int[] a, int offsetA, int[] b, int offsetB ){
+		int aLen = a.length - offsetA;
+		int bLen = b.length - offsetB;
+
+		int overlap = 0;
+		int i = offsetA;
+		int j = offsetB;
+		while( i < a.length && j < b.length ){
+			if( a[i] == b[j] ){
+				overlap++;
+				i++;
+				j++;
+			}
+			else if( a[i] < b[j] ) // a < b
+				i++;
+			else
+				j++;
+		}
+		return overlap / (double)( aLen + bLen - overlap );
+	}
+	
+	
 	/**
 	 *
 	 * @param alen
